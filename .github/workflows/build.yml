@@ -18,6 +18,7 @@ jobs:
           G=android/app/build.gradle.kts
           sed -i 's#compileOptions {#compileOptions {\n        isCoreLibraryDesugaringEnabled = true#' $G
           printf '\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n' >> $G
+          echo "kotlin.jvm.target.validation.mode=warning" >> android/gradle.properties
       - run: flutter pub get
       - run: flutter build apk --release
       - uses: actions/upload-artifact@v4
