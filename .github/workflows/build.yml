@@ -15,15 +15,17 @@ jobs:
           M=android/app/src/main/AndroidManifest.xml
           sed -i 's#<application#<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/><uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/><uses-permission android:name="android.permission.USE_EXACT_ALARM"/><uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/><uses-permission android:name="android.permission.VIBRATE"/><uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/><application#' $M
           sed -i 's#</application>#<receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"/><receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"><intent-filter><action android:name="android.intent.action.BOOT_COMPLETED"/></intent-filter></receiver></application>#' $M
-          G=$(ls android/app/build.gradle*)
-          sed -i 's#compileOptions {#compileOptions {\n        coreLibraryDesugaringEnabled true#' $G 2>/dev/null || true
-          grep -q desugar_jdk_libs $G || printf '\ndependencies { coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.1.2" }\n' >> $G
+          G=android/app/build.gradle.kts
+          sed -i 's#compileOptions {#compileOptions {\n        isCoreLibraryDesugaringEnabled = true#' $G
+          printf '\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n' >> $G
       - run: flutter pub get
       - run: flutter build apk --release
       - uses: actions/upload-artifact@v4
         with: { name: zakker-android, path: build/app/outputs/flutter-apk/app-release.apk }
   windows:
     runs-on: windows-latest
+    env:
+      CMAKE_POLICY_VERSION_MINIMUM: '3.5'
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
