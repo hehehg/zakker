@@ -23,7 +23,7 @@ jobs:
           printf '\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n' >> $G
           echo "kotlin.jvm.target.validation.mode=warning" >> android/gradle.properties
       - run: flutter pub get
-      - run: dart run flutter_launcher_icons -f flutter_launcher_icons-android.yaml
+      - run: dart run flutter_launcher_icons -f icons_android.yaml
       - run: flutter build apk --release
       - run: flutter build appbundle --release
       - uses: actions/upload-artifact@v4
@@ -43,7 +43,7 @@ jobs:
         with: { channel: stable }
       - run: flutter create . --project-name zakker --org com.zakker --platforms=windows
       - run: flutter pub get
-      - run: dart run flutter_launcher_icons -f flutter_launcher_icons-windows.yaml
+      - run: dart run flutter_launcher_icons -f icons_windows.yaml
       - run: flutter build windows --release
       - name: Portable zip + installer
         shell: pwsh
