@@ -12,9 +12,10 @@ jobs:
       - uses: subosito/flutter-action@v2
         with: { channel: stable }
       - run: flutter create . --project-name zakker --org com.zakker --platforms=android
-      - name: Patch Android (permissions, receivers, desugaring)
+      - name: Patch Android (permissions, receivers, desugaring, name)
         run: |
           M=android/app/src/main/AndroidManifest.xml
+          sed -i 's#android:label="zakker"#android:label="ذكّرني"#' $M
           sed -i 's#<application#<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/><uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/><uses-permission android:name="android.permission.USE_EXACT_ALARM"/><uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/><uses-permission android:name="android.permission.VIBRATE"/><uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/><application#' $M
           sed -i 's#</application>#<receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"/><receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"><intent-filter><action android:name="android.intent.action.BOOT_COMPLETED"/></intent-filter></receiver></application>#' $M
           G=android/app/build.gradle.kts
@@ -22,9 +23,15 @@ jobs:
           printf '\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n' >> $G
           echo "kotlin.jvm.target.validation.mode=warning" >> android/gradle.properties
       - run: flutter pub get
+      - run: dart run flutter_launcher_icons -f flutter_launcher_icons-android.yaml
       - run: flutter build apk --release
+      - run: flutter build appbundle --release
       - uses: actions/upload-artifact@v4
-        with: { name: zakker-android, path: build/app/outputs/flutter-apk/app-release.apk }
+        with:
+          name: zakker-android
+          path: |
+            build/app/outputs/flutter-apk/app-release.apk
+            build/app/outputs/bundle/release/app-release.aab
   windows:
     runs-on: windows-latest
     env:
@@ -36,9 +43,17 @@ jobs:
         with: { channel: stable }
       - run: flutter create . --project-name zakker --org com.zakker --platforms=windows
       - run: flutter pub get
+      - run: dart run flutter_launcher_icons -f flutter_launcher_icons-windows.yaml
       - run: flutter build windows --release
+      - name: Portable zip + installer
+        shell: pwsh
+        run: |
+          New-Item dist -ItemType Directory -Force | Out-Null
+          Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath dist\zakker-windows-portable.zip
+          choco install innosetup -y --no-progress
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\zakker.iss
       - uses: actions/upload-artifact@v4
-        with: { name: zakker-windows, path: build/windows/x64/runner/Release }
+        with: { name: zakker-windows, path: dist }
   release:
     needs: [android, windows]
     runs-on: ubuntu-latest
@@ -51,9 +66,11 @@ jobs:
           COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
           cd out
-          mv zakker-android/app-release.apk zakker-android.apk
-          (cd zakker-windows && zip -qr ../zakker-windows.zip .)
-          gh release create "v1.0.${{ github.run_number }}" zakker-android.apk zakker-windows.zip \
+          cp "$(find . -name app-release.apk)" zakker-android.apk
+          cp "$(find . -name app-release.aab)" zakker-android.aab
+          cp "$(find . -name zakker-windows-setup.exe)" .
+          cp "$(find . -name zakker-windows-portable.zip)" .
+          gh release create "v1.0.${{ github.run_number }}" zakker-android.apk zakker-android.aab zakker-windows-setup.exe zakker-windows-portable.zip \
             --repo "${{ github.repository }}" --target "${{ github.sha }}" \
             --title "ذكّرني v1.0.${{ github.run_number }}" \
             --notes "${COMMIT_MSG:-بناء تلقائي}"
